@@ -284,6 +284,15 @@
     m+='¿Me confirmas por favor que toda la información es correcta?';
     return wa(c,m);
   }
+  // 6. Cancelación / reagendar
+  function tplCancelacion(c){
+    var cuando = c.fecha ? (' del '+c.fecha+(c.hora?' a las '+c.hora:'')) : '';
+    var m='Hola'+(c.nombre?' '+c.nombre:'')+' 👋\n\n';
+    m+='Te confirmo que tu cita'+cuando+' en *VAM Garage* quedó cancelada. ✅\n\n';
+    m+='Cuando gustes la reagendamos con todo gusto 🚗 — solo dime qué día te queda mejor y volvemos a apartar tu lugar.\n\n';
+    m+='Quedo al pendiente para reorganizar tu cita. 🙌';
+    return wa(c,m);
+  }
 
   /* ===== Guardar cita nueva ===== */
   function submitForm(ev){
@@ -324,7 +333,8 @@
       ['diaantes','📅','Confirmación un día antes','El día previo a la cita'],
       ['mismodia','☀️','Recordatorio el mismo día','En la mañana de la cita'],
       ['esperando','🚗','Ya estamos esperando','Listos en el estudio'],
-      ['nollego','⏰','No ha llegado','15-20 min después de la hora']
+      ['nollego','⏰','No ha llegado','15-20 min después de la hora'],
+      ['cancelacion','🔄','Cancelación / reagendar','Avisa que se canceló e invita a reagendar']
     ];
     var html=L.map(function(o){
       return '<div class="msgopt" onclick="sendTpl('+i+',\''+o[0]+'\')"><span class="em">'+o[1]+
@@ -340,7 +350,7 @@
     var c=CIT[i]; if(!c)return;
     closeMsg();
     if(!c.telefono){toast('Esta cita no tiene teléfono');return;}
-    var fn={completa:tplCompleta,diaantes:tplDiaAntes,mismodia:tplMismoDia,esperando:tplEsperando,nollego:tplNoLlego}[tipo];
+    var fn={completa:tplCompleta,diaantes:tplDiaAntes,mismodia:tplMismoDia,esperando:tplEsperando,nollego:tplNoLlego,cancelacion:tplCancelacion}[tipo];
     if(fn) window.open(fn(c),'_blank');
   }
 
@@ -354,8 +364,9 @@
   function cancelar(i){
     var c=CIT[i]; if(!c)return;
     if(!confirm('¿Cancelar esta cita?\n'+(c.vehiculo||'')+' · '+(c.fecha||'')+(c.hora?' '+c.hora:'')))return;
+    if(c.telefono) window.open(tplCancelacion(c),'_blank');   // avisar al cliente e invitar a reagendar
     if(BACKEND_V2 && c.row){ postAccion({action:'cancelar',row:c.row},'Cita cancelada'); }
-    else { addHidden(sig(c)); toast('Cita ocultada'); load(); }  // backend v1: se oculta en este dispositivo
+    else { addHidden(sig(c)); toast('Cita cancelada'); load(); }  // backend v1: se oculta en este dispositivo
   }
   function postAccion(payload,okMsg){
     fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
