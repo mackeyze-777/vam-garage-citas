@@ -347,7 +347,7 @@
   /* ===== Acciones ===== */
   function confirmar(i){
     var c=CIT[i]; if(!c)return;
-    if(c.telefono) window.open((c._bucket==='hoy'?tplMismoDia(c):tplDiaAntes(c)),'_blank');
+    if(c.telefono) window.open(tplDiaAntes(c),'_blank');  // siempre el mensaje de "un día antes"
     if(BACKEND_V2 && c.row){ postAccion({action:'confirmar',row:c.row},'Confirmada ✓'); }
     else { addConfirmed(sig(c)); toast('Cita confirmada ✓'); load(); }   // backend v1: marca confirmada en el dispositivo
   }
