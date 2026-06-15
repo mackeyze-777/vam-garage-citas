@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>VAM Garage · Citas</title>
+<style>
+  :root{
+    --bg:#0e0f12; --panel:#16181d; --panel2:#1d2026; --line:#2a2e37;
+    --txt:#f2f4f7; --muted:#9aa3b2; --accent:#ff6a2b; --accent2:#ffb02e;
+    --ok:#27c093; --warn:#ffce4f; --bad:#ff5a5f; --blue:#3b82f6; --wa:#25d366;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:0 0 120px}
+  header{position:sticky;top:0;z-index:10;background:rgba(14,15,18,.92);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+    padding:16px 18px calc(14px + env(safe-area-inset-top));display:flex;
+    align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:.5px}
+  .brand .dot{width:11px;height:11px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .brand small{display:block;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:1px}
+  .gear{background:none;border:0;color:var(--muted);font-size:20px;padding:6px;cursor:pointer}
+  main{max-width:560px;margin:0 auto;padding:18px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .sec{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;
+    margin:22px 4px 10px;display:flex;align-items:center;gap:8px}
+  .sec .cnt{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}
+  .sec.hoy{color:var(--accent2)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+  .card.is-hoy{border-color:rgba(255,176,46,.4)}
+  .card .date{flex:0 0 54px;text-align:center;background:var(--panel2);border-radius:10px;padding:8px 4px}
+  .card .date b{display:block;font-size:20px;line-height:1}
+  .card .date span{font-size:10px;color:var(--muted);text-transform:uppercase}
+  .card .date i{display:block;font-size:11px;color:var(--accent2);font-style:normal;font-weight:800;margin-top:5px;white-space:nowrap}
+  .card .date i.noh{color:var(--bad);opacity:.85;font-weight:700}
+  .card .body{flex:1;min-width:0}
+  .card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card .veh{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .meta{color:var(--muted);font-size:13px;margin-top:3px}
+  .card .meta b{color:var(--txt);font-weight:600}
+  .pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .pill.Pendiente{background:rgba(255,206,79,.15);color:var(--warn)}
+  .pill.Confirmada{background:rgba(39,192,147,.15);color:var(--ok)}
+  .pill.Completada{background:rgba(59,130,246,.15);color:var(--blue)}
+  .pill.Cancelada{background:rgba(255,90,95,.15);color:var(--bad)}
+  .row-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .mini{flex:1 1 auto;min-width:72px;text-align:center;font-size:12px;font-weight:700;padding:9px 8px;
+    border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);
+    text-decoration:none;cursor:pointer}
+  .mini.cf{background:rgba(255,176,46,.14);border-color:rgba(255,176,46,.4);color:var(--accent2)}
+  .mini.msg{background:rgba(37,211,102,.12);border-color:rgba(37,211,102,.35);color:var(--wa)}
+  .mini.cx{background:rgba(255,90,95,.1);border-color:rgba(255,90,95,.3);color:var(--bad);flex:0 0 auto;min-width:0}
+  .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
+  .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));
+    z-index:20;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;
+    font-size:16px;font-weight:800;padding:16px 28px;border-radius:999px;
+    box-shadow:0 8px 28px rgba(255,106,43,.45);cursor:pointer}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:none}
+  .scrim.on{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);
+    border-radius:22px 22px 0 0;border-top:1px solid var(--line);transform:translateY(100%);
+    transition:transform .25s ease;max-height:94vh;overflow-y:auto;padding:6px 18px calc(28px + env(safe-area-inset-bottom))}
+  .sheet.on{transform:translateY(0)}
+  .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:10px auto 6px}
+  .sheet h3{margin:6px 4px 6px;font-size:19px}
+  .sheet .sub{margin:0 4px 14px;color:var(--muted);font-size:13px}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 2px 6px;font-weight:600}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--txt);border-radius:11px;padding:13px;font-size:16px;font-family:inherit}
+  textarea{min-height:64px;resize:vertical}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .save{width:100%;margin-top:22px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;border:0;font-size:17px;font-weight:800;padding:16px;border-radius:13px;cursor:pointer}
+  .save:disabled{opacity:.5}
+  /* opciones de mensajes */
+  .msgopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:10px;
+    color:var(--txt);text-decoration:none;font-size:15px;font-weight:600}
+  .msgopt .em{font-size:22px;flex:0 0 auto}
+  .msgopt small{display:block;color:var(--muted);font-weight:500;font-size:12px;margin-top:2px}
+  .msgopt.call{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3)}
+  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#fff;color:#111;
+    padding:12px 18px;border-radius:11px;font-weight:600;font-size:14px;z-index:60;opacity:0;
+    transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:none;max-width:90%}
+  .toast.on{opacity:1}
+  .note{font-size:12px;color:var(--muted);text-align:center;margin-top:24px;line-height:1.5}
+  .cfg{font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span><div>VAM GARAGE<small>SISTEMA DE CITAS</small></div></div>
+  <button class="gear" onclick="openCfg()" title="Configurar">⚙️</button>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat"><b id="s-hoy">0</b><span>Hoy</span></div>
+    <div class="stat"><b id="s-sem">0</b><span>Esta semana</span></div>
+    <div class="stat"><b id="s-pend">0</b><span>Pendientes</span></div>
+  </div>
+  <div id="list"><div class="empty">Cargando…</div></div>
+  <p class="note">Google Sheets es la fuente de verdad.<br>Cada cita se guarda y se agenda en el calendario <b>VAM GARAGE</b>.</p>
+</main>
+
+<button class="fab" onclick="openForm()">+ Nueva Cita</button>
+
+<!-- Formulario -->
+<div class="scrim" id="scrim" onclick="closeForm()"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <h3>Nueva Cita</h3>
+  <form id="form" onsubmit="return submitForm(event)">
+    <div class="two">
+      <div><label>Fecha</label><input type="date" id="f-fecha" required></div>
+      <div><label>Hora ⏰ (necesaria)</label><input type="time" id="f-hora" required></div>
+    </div>
+    <label>Nombre del cliente</label>
+    <input type="text" id="f-nombre" placeholder="Opcional">
+    <label>Teléfono (WhatsApp)</label>
+    <input type="tel" id="f-telefono" inputmode="tel" placeholder="771 802 1389">
+    <div class="two">
+      <div><label>Vehículo</label><input type="text" id="f-vehiculo" placeholder="Audi A3"></div>
+      <div><label>Color</label><input type="text" id="f-color" placeholder="Azul"></div>
+    </div>
+    <label>Servicio</label>
+    <select id="f-servicio">
+      <option>Interiores Basico</option>
+      <option>Interior + Pulido</option>
+      <option>Pulido + Encerado</option>
+      <option>Pulido + Ceramico</option>
+      <option>Pulido 2 pasos</option>
+      <option>Otro</option>
+    </select>
+    <div class="two">
+      <div><label>Estado</label>
+        <select id="f-estado">
+          <option>Pendiente</option><option>Confirmada</option>
+          <option>Completada</option><option>Cancelada</option>
+        </select>
+      </div>
+      <div><label>Duración (horas)</label>
+        <select id="f-duracion">
+          <option value="1">1 h</option>
+          <option value="1.5">1.5 h</option>
+          <option value="2" selected>2 h</option>
+          <option value="2.5">2.5 h</option>
+          <option value="3">3 h</option>
+          <option value="4">4 h</option>
+          <option value="5">5 h</option>
+          <option value="6">6 h</option>
+          <option value="8">8 h</option>
+        </select>
+      </div>
+    </div>
+    <div class="two">
+      <div><label>Precio total ($)</label><input type="number" id="f-precio" inputmode="numeric" placeholder="1200"></div>
+      <div><label>Anticipo ($)</label><input type="number" id="f-anticipo" inputmode="numeric" placeholder="500"></div>
+    </div>
+    <label>Saldo (automático)</label>
+    <input type="text" id="f-saldo" disabled placeholder="auto">
+    <label>Notas</label>
+    <textarea id="f-notas" placeholder="Ej. Comida tirada, no tocar interior"></textarea>
+    <button class="save" type="submit" id="saveBtn">Guardar cita</button>
+  </form>
+</div>
+
+<!-- Mensajes (plantillas WhatsApp) -->
+<div class="scrim" id="scrimMsg" onclick="closeMsg()"></div>
+<div class="sheet" id="sheetMsg">
+  <div class="grab"></div>
+  <h3>💬 Mensajes</h3>
+  <p class="sub" id="msg-sub"></p>
+  <div id="msg-list"></div>
+</div>
+
+<!-- Config -->
+<div class="scrim" id="scrimCfg" onclick="closeCfg()"></div>
+<div class="sheet" id="sheetCfg">
+  <div class="grab"></div>
+  <h3>⚙️ Configuración</h3>
+  <p class="cfg" style="color:var(--muted)">Pega la URL del Apps Script (termina en <b>/exec</b>). Solo una vez; queda guardada en este dispositivo.</p>
+  <label>URL del Apps Script (Web App)</label>
+  <input type="url" id="cfg-url" class="cfg" placeholder="https://script.google.com/macros/s/.../exec">
+  <button class="save" onclick="saveCfg()">Guardar configuración</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  var API = localStorage.getItem('vam_api_url') || '';
+  var CIT = [];            // citas del render actual (indexadas por _i)
+  var BACKEND_V2 = false;  // se activa SOLO si el backend devuelve 'row' (Code.gs v2)
+  function sig(c){return [c.fecha,c.hora,c.telefono,c.vehiculo,c.servicio].join('|');}
+  function getHidden(){try{return JSON.parse(localStorage.getItem('vam_hidden')||'[]')}catch(e){return[]}}
+  function addHidden(s){var h=getHidden();if(h.indexOf(s)<0)h.push(s);localStorage.setItem('vam_hidden',JSON.stringify(h));}
+  function getConfirmed(){try{return JSON.parse(localStorage.getItem('vam_confirmed')||'[]')}catch(e){return[]}}
+  function addConfirmed(s){var h=getConfirmed();if(h.indexOf(s)<0)h.push(s);localStorage.setItem('vam_confirmed',JSON.stringify(h));}
+
+  function $(id){return document.getElementById(id)}
+  function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('on');
+    clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('on')},2600)}
+  var MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  function recalc(){var p=parseFloat($('f-precio').value)||0,a=parseFloat($('f-anticipo').value)||0;
+    $('f-saldo').value = p? (p-a) : '';}
+  $('f-precio').addEventListener('input',recalc);
+  $('f-anticipo').addEventListener('input',recalc);
+
+  function openForm(){
+    if(!API){openCfg();toast('Primero configura la URL del Apps Script');return;}
+    $('f-fecha').value = new Date().toISOString().slice(0,10);
+    $('scrim').classList.add('on');$('sheet').classList.add('on');
+  }
+  function closeForm(){$('scrim').classList.remove('on');$('sheet').classList.remove('on')}
+  function openCfg(){$('cfg-url').value=API;$('scrimCfg').classList.add('on');$('sheetCfg').classList.add('on')}
+  function closeCfg(){$('scrimCfg').classList.remove('on');$('sheetCfg').classList.remove('on')}
+  function saveCfg(){var u=$('cfg-url').value.trim();
+    if(!/\/exec$/.test(u)){toast('La URL debe terminar en /exec');return;}
+    API=u;localStorage.setItem('vam_api_url',u);closeCfg();toast('Configuración guardada ✓');load();}
+
+  function toDMY(iso){var p=iso.split('-');return (+p[2])+'/'+(+p[1])+'/'+p[0];}
+  function toAmPm(hhmm){if(!hhmm)return '';var p=hhmm.split(':'),h=+p[0],m=p[1],ap=h<12?'am':'pm';
+    var hh=h%12;if(hh===0)hh=12;return hh+':'+m+' '+ap;}
+  function parseDMY(s){if(!s)return null;var m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function phone(c){var n=String(c.telefono||'').replace(/\D/g,'');if(n.length===10)n='52'+n;return n;}
+  function money(v){return (v!==''&&v!=null&&!isNaN(v))?'$'+v:'—';}
+  function wa(c,msg){return 'https://wa.me/'+phone(c)+'?text='+encodeURIComponent(msg);}
+
+  /* ===== PLANTILLAS DE MENSAJES (verbatim del taller) ===== */
+  // 1. Confirmación un día antes
+  function tplDiaAntes(c){
+    var m='Hola, ¡buen día! 👋\n\n';
+    m+='Solo quería confirmar la cita de tu vehículo para el día de mañana. 🚗✨\n\n';
+    m+='Si todo sigue en pie, quedo pendiente de tu confirmación. En caso de cualquier cambio, por favor avísame para reorganizar la agenda.';
+    return wa(c,m);
+  }
+  // 2. Recordatorio el mismo día
+  function tplMismoDia(c){
+    var m='¡Hola, buenos días! ☀️\n\n';
+    m+='Solo paso a confirmar que seguimos listos para recibir tu vehículo el día de hoy, tal como lo acordamos. 🚗\n\n';
+    m+='Nos vemos en el horario programado. Si llegaras a tener algún retraso, te agradecería mucho que me lo hicieras saber.';
+    return wa(c,m);
+  }
+  // 3. Ya estamos esperando tu vehículo
+  function tplEsperando(c){
+    var m='¡Buen día! ☀️\n\n';
+    m+='Ya estamos en el estudio y tenemos todo preparado para recibir tu vehículo y comenzar el servicio agendado. 🚗✨\n\n';
+    m+='Si vienes en camino, aquí te esperamos. En caso de cualquier retraso, avísanos para organizar correctamente la agenda.';
+    return wa(c,m);
+  }
+  // 4. El cliente no ha llegado (15-20 min después)
+  function tplNoLlego(c){
+    var m='Hola, ¿qué tal? 👋\n\n';
+    m+='Solo quería confirmar si todo está bien.\n\n';
+    m+='Teníamos programada la recepción de tu vehículo hace unos minutos y quería saber si todavía vienes en camino o si hubo algún cambio.\n\n';
+    m+='Quedo pendiente. 🚗';
+    return wa(c,m);
+  }
+  // 5. Confirmación completa de la cita (con datos)
+  function tplCompleta(c){
+    var m='Hola, ¿qué tal? 👋\n\n';
+    m+='Te comparto los datos de tu cita para confirmar que toda la información sea correcta.\n\n';
+    m+='📅 Fecha: '+(c.fecha||'')+'\n';
+    m+='🕒 Hora de recepción: '+(c.hora||'')+'\n';
+    m+='🚗 Vehículo: '+(c.vehiculo||'')+'\n';
+    m+='🛠️ Servicios: '+(c.servicio||'')+'\n';
+    m+='💰 Costo total: $'+(c.precio!==''&&c.precio!=null?c.precio:'')+'\n';
+    m+='💳 Anticipo recibido: $'+(c.anticipo!==''&&c.anticipo!=null?c.anticipo:'')+'\n';
+    m+='💵 Restante: $'+(c.saldo!==''&&c.saldo!=null?c.saldo:'')+'\n';
+    m+='⏳ La entrega está programada conforme al tiempo estimado del servicio.\n\n';
+    m+='¿Me confirmas por favor que toda la información es correcta?';
+    return wa(c,m);
+  }
+
+  /* ===== Guardar cita nueva ===== */
+  function submitForm(ev){
+    ev.preventDefault();
+    var btn=$('saveBtn');btn.disabled=true;btn.textContent='Guardando…';
+    var cita={
+      fecha:toDMY($('f-fecha').value), hora:toAmPm($('f-hora').value),
+      nombre:$('f-nombre').value.trim(), telefono:$('f-telefono').value.trim(),
+      vehiculo:$('f-vehiculo').value.trim(), modelo:'', color:$('f-color').value.trim(),
+      servicio:$('f-servicio').value, estado:$('f-estado').value, duracion:$('f-duracion').value,
+      precio:$('f-precio').value, anticipo:$('f-anticipo').value, notas:$('f-notas').value.trim()
+    };
+    fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(cita)})
+      .then(function(r){return r.json()})
+      .then(function(res){
+        btn.disabled=false;btn.textContent='Guardar cita';
+        if(res && res.ok){
+          closeForm();$('form').reset();$('f-saldo').value='';
+          toast('Cita guardada ✓');
+          if(cita.telefono){
+            cita.saldo=res.saldo;
+            cita._bucket = bucketOf(cita.fecha);
+            window.open(tplCompleta(cita),'_blank');
+          }
+          load();
+        }else{toast('Error: '+((res&&res.error)||'desconocido'))}
+      })
+      .catch(function(e){btn.disabled=false;btn.textContent='Guardar cita';toast('Error de red: '+e)});
+    return false;
+  }
+
+  /* ===== Menú de mensajes por cita ===== */
+  function openMsg(i){
+    var c=CIT[i]; if(!c)return;
+    $('msg-sub').textContent=(c.nombre||c.telefono||'')+' · '+(c.vehiculo||'')+(c.fecha?' · '+c.fecha:'')+(c.hora?' '+c.hora:'');
+    var L=[
+      ['completa','✅','Confirmación completa','Fecha, hora, vehículo y costos'],
+      ['diaantes','📅','Confirmación un día antes','El día previo a la cita'],
+      ['mismodia','☀️','Recordatorio el mismo día','En la mañana de la cita'],
+      ['esperando','🚗','Ya estamos esperando','Listos en el estudio'],
+      ['nollego','⏰','No ha llegado','15-20 min después de la hora']
+    ];
+    var html=L.map(function(o){
+      return '<div class="msgopt" onclick="sendTpl('+i+',\''+o[0]+'\')"><span class="em">'+o[1]+
+        '</span><div>'+o[2]+'<small>'+o[3]+'</small></div></div>';
+    }).join('');
+    if(c.telefono) html+='<a class="msgopt call" href="tel:'+phone(c)+'"><span class="em">📞</span><div>Llamar<small>'+esc(c.telefono)+'</small></div></a>';
+    $('msg-list').innerHTML=html;
+    $('scrimMsg').classList.add('on');$('sheetMsg').classList.add('on');
+  }
+  function closeMsg(){$('scrimMsg').classList.remove('on');$('sheetMsg').classList.remove('on')}
+
+  function sendTpl(i,tipo){
+    var c=CIT[i]; if(!c)return;
+    closeMsg();
+    if(!c.telefono){toast('Esta cita no tiene teléfono');return;}
+    var fn={completa:tplCompleta,diaantes:tplDiaAntes,mismodia:tplMismoDia,esperando:tplEsperando,nollego:tplNoLlego}[tipo];
+    if(fn) window.open(fn(c),'_blank');
+  }
+
+  /* ===== Acciones ===== */
+  function confirmar(i){
+    var c=CIT[i]; if(!c)return;
+    if(c.telefono) window.open((c._bucket==='hoy'?tplMismoDia(c):tplDiaAntes(c)),'_blank');
+    if(BACKEND_V2 && c.row){ postAccion({action:'confirmar',row:c.row},'Confirmada ✓'); }
+    else { addConfirmed(sig(c)); toast('Cita confirmada ✓'); load(); }   // backend v1: marca confirmada en el dispositivo
+  }
+  function cancelar(i){
+    var c=CIT[i]; if(!c)return;
+    if(!confirm('¿Cancelar esta cita?\n'+(c.vehiculo||'')+' · '+(c.fecha||'')+(c.hora?' '+c.hora:'')))return;
+    if(BACKEND_V2 && c.row){ postAccion({action:'cancelar',row:c.row},'Cita cancelada'); }
+    else { addHidden(sig(c)); toast('Cita ocultada'); load(); }  // backend v1: se oculta en este dispositivo
+  }
+  function postAccion(payload,okMsg){
+    fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload)})
+      .then(function(r){return r.json()}).then(function(){toast(okMsg);load();})
+      .catch(function(){toast(okMsg);setTimeout(load,900);});
+  }
+
+  /* ===== Carga y render ===== */
+  function bucketOf(fechaStr){
+    var today=new Date();today.setHours(0,0,0,0);
+    var tom=new Date(today);tom.setDate(today.getDate()+1);
+    var d=parseDMY(fechaStr); if(d)d.setHours(0,0,0,0);
+    if(d && d.getTime()===today.getTime())return 'hoy';
+    if(d && d.getTime()===tom.getTime())return 'manana';
+    return 'prox';
+  }
+  function load(){
+    if(!API){$('list').innerHTML='<div class="empty">Configura la URL del Apps Script con el botón ⚙️ arriba.</div>';return;}
+    fetch(API).then(function(r){return r.json()}).then(function(res){
+      if(!res.ok){$('list').innerHTML='<div class="empty">No se pudo leer la hoja.</div>';return;}
+      render(res.citas||[]);
+    }).catch(function(){$('list').innerHTML='<div class="empty">Sin conexión con el servidor.</div>'});
+  }
+  function render(citas){
+    // ¿el backend ya es v2? (devuelve nº de fila). Si no, modo básico.
+    BACKEND_V2 = citas.length>0 && ('row' in citas[0]);
+    if(!BACKEND_V2){
+      var h=getHidden(), cf=getConfirmed();
+      citas=citas.filter(function(c){return h.indexOf(sig(c))<0;});                  // ocultar canceladas locales
+      citas.forEach(function(c){ if(cf.indexOf(sig(c))>=0) c.estado='Confirmada'; });// marcar confirmadas locales
+    }
+    CIT=[];
+    var today=new Date();today.setHours(0,0,0,0);
+    var wkEnd=new Date(today);wkEnd.setDate(today.getDate()+7);
+    var g={hoy:[],manana:[],prox:[]};
+    var nSem=0,nPend=0;
+    citas.forEach(function(c){
+      c._i=CIT.length; CIT.push(c);
+      c._bucket=bucketOf(c.fecha);
+      g[c._bucket].push(c);
+      var d=parseDMY(c.fecha); if(d){d.setHours(0,0,0,0); if(d<=wkEnd)nSem++;}
+      if((c.estado||'')==='Pendiente')nPend++;
+    });
+    $('s-hoy').textContent=g.hoy.length;
+    $('s-sem').textContent=nSem;
+    $('s-pend').textContent=nPend;
+    if(!citas.length){$('list').innerHTML='<div class="empty">No hay citas próximas. Toca “+ Nueva Cita”.</div>';return;}
+    $('list').innerHTML = section('Hoy',g.hoy,'hoy')+section('Mañana',g.manana,'')+section('Próximas',g.prox,'');
+  }
+  function section(titulo,arr,cls){
+    if(!arr.length)return '';
+    return '<div class="sec '+cls+'">'+titulo+'<span class="cnt">'+arr.length+'</span></div>'+arr.map(card).join('');
+  }
+  function card(c){
+    var d=parseDMY(c.fecha);
+    var dd=d?d.getDate():'',mm=d?MESES[d.getMonth()]:'';
+    var est=(c.estado||'Pendiente');
+    var dur=(c.duracion!==''&&c.duracion!=null)?' · ⏱ '+c.duracion+'h':'';
+    var precioTxt=(c.precio!==''&&c.precio!=null)?' · $'+c.precio:'';
+    var saldoTxt=(c.saldo!==''&&c.saldo!=null&&c.saldo!==0)?' · saldo $'+c.saldo:'';
+    var acts='';
+    if(c._bucket==='hoy'||c._bucket==='manana')
+      acts+='<button class="mini cf" onclick="confirmar('+c._i+')">Confirmar</button>';
+    if(c.telefono)
+      acts+='<button class="mini msg" onclick="openMsg('+c._i+')">💬 Mensajes</button>';
+    acts+='<button class="mini cx" onclick="cancelar('+c._i+')" title="Cancelar">✕</button>';
+    return '<div class="card '+(c._bucket==='hoy'?'is-hoy':'')+'">'+
+      '<div class="date"><b>'+dd+'</b><span>'+mm+'</span>'+(c.hora?'<i>'+esc(c.hora)+'</i>':'<i class="noh">s/h</i>')+'</div>'+
+      '<div class="body">'+
+        '<div class="top"><div class="veh">'+(esc(c.vehiculo)||'—')+'</div>'+
+          '<span class="pill '+est+'">'+est+'</span></div>'+
+        '<div class="meta"><b>'+(c.hora||'sin hora')+'</b> · '+esc(c.servicio||'—')+dur+precioTxt+saldoTxt+'</div>'+
+        '<div class="meta">'+(esc(c.nombre)||esc(c.telefono)||'')+(c.notas?' · '+esc(c.notas):'')+'</div>'+
+        '<div class="row-actions">'+acts+'</div>'+
+      '</div></div>';
+  }
+
+  load();
+</script>
+</body>
+</html>
