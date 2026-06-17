@@ -63,6 +63,7 @@
   .mini.cf{background:rgba(255,176,46,.14);border-color:rgba(255,176,46,.4);color:var(--accent2)}
   .mini.msg{background:rgba(37,211,102,.12);border-color:rgba(37,211,102,.35);color:var(--wa)}
   .mini.cx{background:rgba(255,90,95,.1);border-color:rgba(255,90,95,.3);color:var(--bad);flex:0 0 auto;min-width:0}
+  .mini.ok{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.4);color:var(--blue)}
   .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
   .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));
     z-index:20;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;
@@ -138,13 +139,22 @@
       <div><label>Color</label><input type="text" id="f-color" placeholder="Azul"></div>
     </div>
     <label>Servicio</label>
-    <select id="f-servicio">
-      <option>Interiores Basico</option>
+    <select id="f-servicio" onchange="onServ()">
+      <option>Mini Interior Detail</option>
+      <option>Premium Interior Detailing</option>
+      <option>Pulido a 1 paso + Encerado</option>
+      <option>Pulido 2 pasos (corrección de pintura)</option>
       <option>Interior + Pulido</option>
-      <option>Pulido + Encerado</option>
-      <option>Pulido + Ceramico</option>
-      <option>Pulido 2 pasos</option>
+      <option>Cerámico</option>
+      <option>Pulido + Cerámico</option>
       <option>Otro</option>
+    </select>
+    <input type="text" id="f-servicio-otro" placeholder="Escribe el servicio" style="display:none;margin-top:10px">
+    <select id="f-ceramico-anios" style="display:none;margin-top:10px">
+      <option value="1">Cerámico de 1 año</option>
+      <option value="2">Cerámico de 2 años</option>
+      <option value="3" selected>Cerámico de 3 años</option>
+      <option value="5">Cerámico de 5 años</option>
     </select>
     <div class="two">
       <div><label>Estado</label>
@@ -210,6 +220,8 @@
   function addHidden(s){var h=getHidden();if(h.indexOf(s)<0)h.push(s);localStorage.setItem('vam_hidden',JSON.stringify(h));}
   function getConfirmed(){try{return JSON.parse(localStorage.getItem('vam_confirmed')||'[]')}catch(e){return[]}}
   function addConfirmed(s){var h=getConfirmed();if(h.indexOf(s)<0)h.push(s);localStorage.setItem('vam_confirmed',JSON.stringify(h));}
+  function getCompleted(){try{return JSON.parse(localStorage.getItem('vam_completed')||'[]')}catch(e){return[]}}
+  function addCompleted(s){var h=getCompleted();if(h.indexOf(s)<0)h.push(s);localStorage.setItem('vam_completed',JSON.stringify(h));}
 
   function $(id){return document.getElementById(id)}
   function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('on');
@@ -224,9 +236,23 @@
   function openForm(){
     if(!API){openCfg();toast('Primero configura la URL del Apps Script');return;}
     $('f-fecha').value = new Date().toISOString().slice(0,10);
+    onServ();
     $('scrim').classList.add('on');$('sheet').classList.add('on');
   }
   function closeForm(){$('scrim').classList.remove('on');$('sheet').classList.remove('on')}
+  // Muestra el campo libre en "Otro" y el selector de años cuando hay cerámico
+  function onServ(){
+    var v=$('f-servicio').value;
+    $('f-servicio-otro').style.display = (v==='Otro')?'block':'none';
+    $('f-ceramico-anios').style.display = (v.toLowerCase().indexOf('cerámico')>=0)?'block':'none';
+  }
+  // Devuelve el servicio elegido (texto libre si "Otro"; con años si es cerámico)
+  function servicioVal(){
+    var v=$('f-servicio').value;
+    if(v==='Otro'){var o=$('f-servicio-otro').value.trim();return o||'Otro';}
+    if(v.toLowerCase().indexOf('cerámico')>=0){return v+' ('+$('f-ceramico-anios').value+' años)';}
+    return v;
+  }
   function openCfg(){$('cfg-url').value=API;$('scrimCfg').classList.add('on');$('sheetCfg').classList.add('on')}
   function closeCfg(){$('scrimCfg').classList.remove('on');$('sheetCfg').classList.remove('on')}
   function saveCfg(){var u=$('cfg-url').value.trim();
@@ -307,7 +333,7 @@
       fecha:toDMY($('f-fecha').value), hora:toAmPm($('f-hora').value),
       nombre:$('f-nombre').value.trim(), telefono:$('f-telefono').value.trim(),
       vehiculo:$('f-vehiculo').value.trim(), modelo:'', color:$('f-color').value.trim(),
-      servicio:$('f-servicio').value, estado:$('f-estado').value, duracion:$('f-duracion').value,
+      servicio:servicioVal(), estado:$('f-estado').value, duracion:$('f-duracion').value,
       precio:$('f-precio').value, anticipo:$('f-anticipo').value, notas:$('f-notas').value.trim()
     };
     fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(cita)})
@@ -315,7 +341,7 @@
       .then(function(res){
         btn.disabled=false;btn.textContent='Guardar cita';
         if(res && res.ok){
-          closeForm();$('form').reset();$('f-saldo').value='';
+          closeForm();$('form').reset();$('f-saldo').value='';onServ();
           toast('Cita guardada ✓');
           if(cita.telefono){
             cita.saldo=res.saldo;
@@ -366,6 +392,12 @@
     if(BACKEND_V2 && c.row){ postAccion({action:'confirmar',row:c.row},'Confirmada ✓'); }
     else { addConfirmed(sig(c)); toast('Cita confirmada ✓'); load(); }   // backend v1: marca confirmada en el dispositivo
   }
+  function completar(i){
+    var c=CIT[i]; if(!c)return;
+    if(!confirm('¿Marcar como completada?\nYa no aparecerá en la lista.\n'+(c.vehiculo||'')+(c.fecha?' · '+c.fecha:'')))return;
+    if(BACKEND_V2 && c.row){ postAccion({action:'completar',row:c.row},'Cita completada ✓'); }
+    else { addCompleted(sig(c)); toast('Cita completada ✓'); load(); }  // backend v1: se oculta en este dispositivo
+  }
   function cancelar(i){
     var c=CIT[i]; if(!c)return;
     if(!confirm('¿Cancelar esta cita?\n'+(c.vehiculo||'')+' · '+(c.fecha||'')+(c.hora?' '+c.hora:'')))return;
@@ -400,8 +432,8 @@
     // ¿el backend ya es v2? (devuelve nº de fila). Si no, modo básico.
     BACKEND_V2 = citas.length>0 && ('row' in citas[0]);
     if(!BACKEND_V2){
-      var h=getHidden(), cf=getConfirmed();
-      citas=citas.filter(function(c){return h.indexOf(sig(c))<0;});                  // ocultar canceladas locales
+      var h=getHidden(), cf=getConfirmed(), cp=getCompleted();
+      citas=citas.filter(function(c){return h.indexOf(sig(c))<0 && cp.indexOf(sig(c))<0;}); // ocultar canceladas/completadas locales
       citas.forEach(function(c){ if(cf.indexOf(sig(c))>=0) c.estado='Confirmada'; });// marcar confirmadas locales
     }
     CIT=[];
@@ -438,6 +470,7 @@
       acts+='<button class="mini cf" onclick="confirmar('+c._i+')">Confirmar</button>';
     if(c.telefono)
       acts+='<button class="mini msg" onclick="openMsg('+c._i+')">💬 Mensajes</button>';
+    acts+='<button class="mini ok" onclick="completar('+c._i+')">✓ Completada</button>';
     acts+='<button class="mini cx" onclick="cancelar('+c._i+')" title="Cancelar">✕</button>';
     return '<div class="card '+(c._bucket==='hoy'?'is-hoy':'')+'">'+
       '<div class="date"><b>'+dd+'</b><span>'+mm+'</span>'+(c.hora?'<i>'+esc(c.hora)+'</i>':'<i class="noh">s/h</i>')+'</div>'+
